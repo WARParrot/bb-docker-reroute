@@ -9,6 +9,7 @@ ok()   { PASS=$((PASS+1)); echo "  ok  - $1"; }
 bad()  { FAIL=$((FAIL+1)); echo "  FAIL - $1"; }
 check(){ [ "$1" = "$2" ] && ok "$3" || bad "$3 (want '$2', got '$1')"; }
 
+BDR_HAD_SYMLINK=0; [ -e /usr/local/bin/bb-docker-route ] && BDR_HAD_SYMLINK=1
 TH="$(mktemp -d)"
 export HOME="$TH"
 export BB_DOCKER_ROUTE_NO_SYMLINK=1   # never touch real /usr/local/bin in tests
@@ -24,7 +25,11 @@ bash components/install.sh >/dev/null 2>&1
 check "$(grep -cF 'bb-docker-route auto-provision >>>' "$TH/.bashrc")" 1 "one auto-provision block"
 check "$(grep -cF 'bb-docker-route rc >>>' "$TH/.bashrc")" 1 "one rc block"
 check "$(ls "$TH/.bb-docker-route/rc.sh" >/dev/null 2>&1 && echo y)" y "rc.sh installed"
-[ -e /usr/local/bin/bb-docker-route ] && bad "symlink leaked in hermetic mode" || ok "no symlink leak (NO_SYMLINK)"
+if [ -e /usr/local/bin/bb-docker-route ] && [ "${BDR_HAD_SYMLINK:-0}" = "0" ]; then
+  bad "symlink leaked in hermetic mode"
+else
+  ok "no new symlink created (NO_SYMLINK)"
+fi
 
 echo "# interactive shell self-heal"
 M="$TH/.bb/personal-workspaces/env_testid"
