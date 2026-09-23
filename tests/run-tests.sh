@@ -10,7 +10,9 @@ bad()  { FAIL=$((FAIL+1)); echo "  FAIL - $1"; }
 check(){ [ "$1" = "$2" ] && ok "$3" || bad "$3 (want '$2', got '$1')"; }
 
 BDR_HAD_SYMLINK=0; [ -e /usr/local/bin/bb-docker-route ] && BDR_HAD_SYMLINK=1
-TH="$(mktemp -d /root/bdr-test-XXXXXX)"   # ext4: /tmp is noexec+flaky here
+# Prefer an ext4 home (this sandbox's /tmp is noexec+flaky); fall back to
+# system tmp (CI runners: /tmp is exec-safe, /root not writable).
+TH="$(mktemp -d /root/bdr-test-XXXXXX 2>/dev/null || mktemp -d)"
 export HOME="$TH"
 export BB_DOCKER_ROUTE_NO_SYMLINK=1   # never touch real /usr/local/bin in tests
 
