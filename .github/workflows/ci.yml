@@ -1,0 +1,20 @@
+name: ci
+
+on:
+  push:
+    branches: [MAIN, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Shell syntax + hermetic test battery"
+        run: bash tests/run-tests.sh
+      - name: "Smoke: probe emits valid JSON"
+        run: |
+          out=$(bash components/probe-container-tool.sh)
+          echo "$out" | python3 -c "import json,sys; json.load(sys.stdin)"
+          echo "$out"

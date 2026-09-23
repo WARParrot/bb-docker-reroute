@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# bb-docker-route — container-first routing CLI for bb sessions in Docker envs.
+# Subcommands:
+#   provision [env-id]  Create missing env dir(s). Auto-detects from cwd/env files.
+#   status              JSON probe of the routing environment.
+#   doctor              Human-readable check of all routing prerequisites.
+#   install             Run the interactive installer (components/install.sh).
+#   remove              Undo .bashrc additions and delete state dir.
+set -uo pipefail
+DIR="${HOME}/.bb/personal-workspaces"
+STATE="${HOME}/.bb-docker-route"
+
+detect_env_id() {
+  # 1) bb state files if present  2) cwd basename if it looks like env_*
+  local f id
+  for id in "${BB_ENV_ID:-}" "${BB_ENVIRONMENT_ID:-}"; do
+    [ -n "$id" ] && { echo "$id"; return; }
+  done
+  for f in "${HOME}/.bb/current-env" "${HOME}/.bb/env"; do
+    if [ -r "$f" ]; then id="$(head -c 64 "$f" | tr -d '[:space:]')"; [ -n "$id" ] && { echo "$id"; return; }; fi
+  done
+  id="$(basename "$(pwd)")"
+  case "$id" in env_*) echo "${id#env_}" ;; esac
+}
+
+cmd_provision() {
+  local id="${1:-$(detect_env_id)}"
+  if [ -z "$id" ]; then
+    echo "[bb-docker-route] no env id detected; nothing to provision" >&2
+    return 1
+  fi
+  case "$id" in env_*) id="${id#env_}" ;; esac
+  mkdir -p "${DIR}/env_${id}"
+  echo "[bb-docker-route] provisioned ${DIR}/env_${id}"
+}
+
+cmd_status() {
+  local in_docker=false probe
+  grep -qE 'docker|containerd' /proc/1/cgroup 2>/dev/null && in_docker=true
+  [ -f /.dockerenv ] && in_docker=true
+  local id; id="$(detect_env_id)"
+  local exists="null"
+  [ -n "$id" ] && { [ -d "${DIR}/env_${id}" ] && exists=true || exists=false; }
+  printf '{"in_docker":%s,"env_id":"%s","env_dir_exists":%s,"route_active":%s,"bb_on_path":%s}\n' \
+    "$in_docker" "$id" "$exists" \
+    "$([ -n "${BB_DOCKER_ROUTE:-}" ] && echo true || echo false)" \
+    "$(command -v bb >/dev/null 2>&1 && echo true || echo false)"
+}
+
+cmd_doctor() {
+  echo "── bb-docker-route doctor ──"
+  cmd_status
+  echo "bashrc auto-provision: $(grep -qF 'bb-docker-route auto-provision' ~/.bashrc 2>/dev/null && echo present || echo MISSING)"
+  echo "bashrc rc source:      $(grep -qF '.bb-docker-route/rc.sh' ~/.bashrc 2>/dev/null && echo present || echo MISSING)"
+  echo "state dir:             $([ -d "$STATE" ] && echo present || echo MISSING)"
+  echo "probe tool:            $([ -x "${STATE}/probe-container-tool.sh" ] && echo present || echo MISSING)"
+  echo "bootstrap (self-restore): $([ -x "${STATE}/bootstrap.sh" ] && echo present || echo MISSING)"
+  echo "checkout path:         $(cat "${STATE}/.checkout-path" 2>/dev/null || echo 'not recorded')"
+  echo "restore repo:          ${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-route.git}"
+}
+
+cmd_install() { exec bash "$(dirname "$(readlink -f "$0")")/../components/install.sh"; }
+
+cmd_remove() {
+  sed -i '/# >>> bb-docker-route auto-provision >>>/,/# <<< bb-docker-route auto-provision <<</d' ~/.bashrc 2>/dev/null || true
+  sed -i '/# >>> bb-docker-route rc >>>/,/# <<< bb-docker-route rc <<</d' ~/.bashrc 2>/dev/null || true
+  # remove our PATH symlink only if it points at this plugin
+  if [ -L /usr/local/bin/bb-docker-route ] && readlink /usr/local/bin/bb-docker-route 2>/dev/null | grep -q 'bb-docker-route/bin/bb-docker-route'; then
+    rm -f /usr/local/bin/bb-docker-route
+  fi
+  rm -rf "$STATE"
+  echo "[bb-docker-route] removed bashrc blocks, symlink and state dir"
+}
+
+case "${1:-}" in
+  provision) shift; cmd_provision "$@" ;;
+  status)    cmd_status ;;
+  doctor)    cmd_doctor ;;
+  install)   cmd_install ;;
+  remove)    cmd_remove ;;
+  *) grep -E '^#   [a-z]+' "$0" | sed 's/^#   //'; exit 2 ;;
+esac
