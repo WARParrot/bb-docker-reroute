@@ -10,7 +10,7 @@ bad()  { FAIL=$((FAIL+1)); echo "  FAIL - $1"; }
 check(){ [ "$1" = "$2" ] && ok "$3" || bad "$3 (want '$2', got '$1')"; }
 
 BDR_HAD_SYMLINK=0; [ -e /usr/local/bin/bb-docker-route ] && BDR_HAD_SYMLINK=1
-TH="$(mktemp -d)"
+TH="$(mktemp -d /root/bdr-test-XXXXXX)"   # ext4: /tmp is noexec+flaky here
 export HOME="$TH"
 export BB_DOCKER_ROUTE_NO_SYMLINK=1   # never touch real /usr/local/bin in tests
 
@@ -67,6 +67,11 @@ case "$st" in *'"env_dir_exists":true'*) ok "status reports existing dir" ;; *) 
 echo "# doctor"
 doc="$(bash "$TH/.bb-docker-route/bin/bb-docker-route" doctor 2>/dev/null)"
 case "$doc" in *"present"*) ok "doctor reports components" ;; *) bad "doctor" ;; esac
+
+echo "# self-restore after wipe (bashrc block is the restorer)"
+rm -rf "$TH/.bb-docker-route"
+bash -ic 'echo x' >/dev/null 2>&1
+[ -x "$TH/.bb-docker-route/bin/bb-docker-route" ] && ok "wiped install self-restored on next shell" || bad "self-restore after wipe"
 
 echo "# remove"
 bash "$TH/.bb-docker-route/bin/bb-docker-route" remove >/dev/null 2>&1

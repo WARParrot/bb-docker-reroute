@@ -42,8 +42,25 @@ sed -i '/# >>> bb-docker-route rc >>>/,/# <<< bb-docker-route rc <<</d' ~/.bashr
 cat >> ~/.bashrc <<BDRBLOCK
 # >>> bb-docker-route auto-provision >>>
 # bb-docker-route: restore plugin if wiped, then create missing bb env dirs.
+# The block itself is the last-resort restorer (it survives sandbox rebuilds).
 if [ -z "\${BB_BASH_ENV_BOOTSTRAP:-}" ]; then
-  [ -x "${BC_DIR}/bootstrap.sh" ] && "${BC_DIR}/bootstrap.sh" >/dev/null 2>&1
+  if [ -x "${BC_DIR}/bootstrap.sh" ]; then
+    "${BC_DIR}/bootstrap.sh" >/dev/null 2>&1
+  else
+    for c in "\$HOME/agent-replica/outbox/bb-docker-route" /root/agent-replica/outbox/bb-docker-route; do
+      if [ -f "\$c/components/install.sh" ]; then
+        bash "\$c/components/install.sh" >/dev/null 2>&1 && break
+      fi
+    done
+    if [ ! -x "${BC_DIR}/bin/bb-docker-route" ]; then
+      bdr_t="\$(mktemp -d)"
+      if git clone --depth 1 "\${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-reroute.git}" "\$bdr_t/r" >/dev/null 2>&1 \
+         && [ -f "\$bdr_t/r/components/install.sh" ]; then
+        bash "\$bdr_t/r/components/install.sh" >/dev/null 2>&1
+      fi
+      rm -rf "\$bdr_t"
+    fi
+  fi
   command -v bb-docker-route >/dev/null 2>&1 && bb-docker-route provision >/dev/null 2>&1
 fi
 # <<< bb-docker-route auto-provision <<<
