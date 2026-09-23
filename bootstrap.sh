@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bb-docker-route bootstrap: restore the installed plugin if it is missing.
-# Chain: local checkout (recorded at install time) -> git clone -> wiki mirror.
+# Chain: local checkout (recorded at install time) -> git clone (public repo).
 # Called automatically from the ~/.bashrc auto-provision block.
 set -uo pipefail
 DEST="${HOME}/.bb-docker-route"
@@ -24,18 +24,4 @@ restore_from_git() {
   rm -rf "${tmp}"; return 1
 }
 
-restore_from_wiki() {
-  # Fallback for fresh sandboxes without git creds: wiki build mirror.
-  local hs="/root/bin/host-service"
-  [ -x "${hs}" ] || return 1
-  local tmp; tmp="$(mktemp -d)"
-  if curl -fsS -H "Authorization: Bearer ${DOCKER_AGENT_SERVICE_BRIDGE_TOKEN:-}" \
-      "${DOCKER_AGENT_SERVICE_BRIDGE_URL:-}/proxy/wiki/api/projects/bb-docker-route/builds/latest/download" \
-      -o "${tmp}/plugin.zip" 2>/dev/null; then
-    python3 -m zipfile -e "${tmp}/plugin.zip" "${tmp}/x" 2>/dev/null || return 1
-    restore_from_dir "${tmp}/x/bb-docker-route" && return 0
-  fi
-  rm -rf "${tmp}"; return 1
-}
-
-restore_from_dir "${SELF_DIR}/.." || restore_from_git || restore_from_wiki || exit 0
+restore_from_dir "${SELF_DIR}/.." || restore_from_git || exit 0

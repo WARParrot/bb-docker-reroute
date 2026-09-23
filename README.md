@@ -15,7 +15,9 @@ after the first install**.
 - A self-healing `cd` (exported to children too) creates a missing env dir and
   retries; all other paths keep genuine error semantics.
 - If the installed copy is ever wiped (sandbox rebuild), the next shell
-  silently restores it: **local checkout → git clone → wiki mirror**.
+  silently restores it: **local checkout → git clone** (public repo, no
+  creds needed). A zip copy is also kept on the host (Wiki project
+  `bb-docker-route`) as an offline artifact.
 - Idempotent installer; reversible with one command (`remove`).
 - Hermetic test battery (`tests/run-tests.sh`, throwaway HOME) runs in CI.
 
@@ -44,7 +46,8 @@ bb-docker-route status     # JSON probe
 | `components/rc.sh` | Exports + self-healing `cd` + DEBUG-trap shim |
 | `components/hook.sh` | Pre-cd safety net (scans `/proc/*/cwd`) |
 | `components/probe-container-tool.sh` | JSON probe for routing decisions |
-| `bootstrap.sh` | Restore chain: local checkout → git → wiki mirror |
+| `components/host/env-watcher.sh` | HOST-side: mirrors env dirs into sandbox homes (covers non-bash tools) |
+| `bootstrap.sh` | Restore chain: local checkout → git clone (public repo) |
 | `tests/run-tests.sh` | Hermetic battery (throwaway HOME, no system writes) |
 
 ## Host-side permanent fix (optional, complements the plugin)
