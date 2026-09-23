@@ -56,7 +56,7 @@ cmd_doctor() {
   echo "probe tool:            $([ -x "${STATE}/probe-container-tool.sh" ] && echo present || echo MISSING)"
   echo "bootstrap (self-restore): $([ -x "${STATE}/bootstrap.sh" ] && echo present || echo MISSING)"
   echo "checkout path:         $(cat "${STATE}/.checkout-path" 2>/dev/null || echo 'not recorded')"
-  echo "restore repo:          ${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-route.git}"
+  echo "restore repo:          ${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-reroute.git}"
 }
 
 cmd_install() { exec bash "$(dirname "$(readlink -f "$0")")/../components/install.sh"; }
