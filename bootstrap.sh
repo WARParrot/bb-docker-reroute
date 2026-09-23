@@ -16,7 +16,7 @@ restore_from_dir() {
 }
 
 restore_from_git() {
-  local repo="${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-route.git}"
+  local repo="${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-reroute.git}"
   local tmp; tmp="$(mktemp -d)"
   if git clone --depth 1 "${repo}" "${tmp}/repo" >/dev/null 2>&1; then
     restore_from_dir "${tmp}/repo" && return 0
