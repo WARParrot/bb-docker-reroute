@@ -44,8 +44,6 @@ bb-docker-route status     # JSON probe
 | `bin/bb-docker-route` | CLI: `provision`, `status`, `doctor`, `install`, `remove` |
 | `components/install.sh` | Idempotent installer (marked `~/.bashrc` blocks, PATH symlink) |
 | `components/rc.sh` | Exports + self-healing `cd` + DEBUG-trap shim |
-| `components/hook.sh` | Pre-cd safety net (scans `/proc/*/cwd`) |
-| `components/probe-container-tool.sh` | JSON probe for routing decisions |
 | `components/host/env-watcher.sh` | HOST-side: mirrors env dirs into sandbox homes (covers non-bash tools) |
 | `bootstrap.sh` | Restore chain: local checkout → git clone (public repo) |
 | `tests/run-tests.sh` | Hermetic battery (throwaway HOME, no system writes) |

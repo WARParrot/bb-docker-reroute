@@ -13,8 +13,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: "Shell syntax + hermetic test battery"
         run: bash tests/run-tests.sh
-      - name: "Smoke: probe emits valid JSON"
+      - name: "Smoke: status emits valid JSON"
         run: |
-          out=$(bash components/probe-container-tool.sh)
-          echo "$out" | python3 -c "import json,sys; json.load(sys.stdin)"
+          out=$(bash bin/bb-docker-route status)
+          echo "$out" | python3 -m json.tool
           echo "$out"

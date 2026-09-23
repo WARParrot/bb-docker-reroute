@@ -21,9 +21,7 @@ log() { printf '[bb-docker-route] %s\n' "$*"; }
 
 mkdir -p "${BC_DIR}/bin" "${HOME}/.bb/personal-workspaces"
 install -m 0755 "${TOP_DIR}/bin/bb-docker-route" "${BC_BIN}"
-cp "${TOP_DIR}/components/hook.sh" "${BC_DIR}/hook.sh"
 cp "${TOP_DIR}/components/rc.sh" "${BC_DIR}/rc.sh"
-install -m 0755 "${TOP_DIR}/components/probe-container-tool.sh" "${BC_DIR}/probe-container-tool.sh"
 install -m 0755 "${TOP_DIR}/bootstrap.sh" "${BC_DIR}/bootstrap.sh"
 # remember where the checkout lives for offline restore
 printf '%s\n' "${TOP_DIR}" > "${BC_DIR}/.checkout-path"

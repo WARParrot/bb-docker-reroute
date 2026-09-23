@@ -53,7 +53,6 @@ cmd_doctor() {
   echo "bashrc auto-provision: $(grep -qF 'bb-docker-route auto-provision' ~/.bashrc 2>/dev/null && echo present || echo MISSING)"
   echo "bashrc rc source:      $(grep -qF '.bb-docker-route/rc.sh' ~/.bashrc 2>/dev/null && echo present || echo MISSING)"
   echo "state dir:             $([ -d "$STATE" ] && echo present || echo MISSING)"
-  echo "probe tool:            $([ -x "${STATE}/probe-container-tool.sh" ] && echo present || echo MISSING)"
   echo "bootstrap (self-restore): $([ -x "${STATE}/bootstrap.sh" ] && echo present || echo MISSING)"
   echo "checkout path:         $(cat "${STATE}/.checkout-path" 2>/dev/null || echo 'not recorded')"
   echo "restore repo:          ${BB_DOCKER_ROUTE_REPO:-https://github.com/WARParrot/bb-docker-reroute.git}"
