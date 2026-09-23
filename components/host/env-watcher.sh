@@ -17,12 +17,15 @@ mkdir -p "$SRC"
 log() { printf '[bb-docker-route host] %s\n' "$*" >&2; }
 
 mirror_once() {
-  local d base tgt
+  local d base tgt home_dir
   for d in "$SRC"/env_*; do
     [ -d "$d" ] || continue
     base="$(basename "$d")"
     for tgt in $SANDBOX_GLOB; do
-      [ -d "$(dirname "$tgt")" ] || continue
+      # guard on the sandbox HOME level (…/home/.bb/personal-workspaces → …/home):
+      # a fresh home may not have .bb yet — create the full path on demand.
+      home_dir="$(dirname "$(dirname "$tgt")")"
+      [ -d "$home_dir" ] || continue
       [ -d "${tgt}/${base}" ] || { mkdir -p "${tgt}/${base}" && log "mirrored ${base} -> ${tgt}"; }
     done
   done

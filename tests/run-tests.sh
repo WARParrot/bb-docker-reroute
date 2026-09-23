@@ -70,6 +70,16 @@ echo "# doctor"
 doc="$(bash "$TH/.bb-docker-route/bin/bb-docker-route" doctor 2>/dev/null)"
 case "$doc" in *"present"*) ok "doctor reports components" ;; *) bad "doctor" ;; esac
 
+echo "# host env-watcher: fresh sandbox home (no .bb yet)"
+WSRC="$TH/hostbb/.bb/personal-workspaces"; WHOME="$TH/sbhome"
+mkdir -p "$WSRC/env_fresh" "$WHOME"   # Hermes provisions the home; watcher adds .bb tree
+timeout 1 bash components/host/env-watcher.sh "$WSRC" "$WHOME/.bb/personal-workspaces" >/dev/null 2>&1
+[ -d "$WHOME/.bb/personal-workspaces/env_fresh" ] && ok "watcher creates into fresh home" || bad "watcher fresh-home mirror"
+FAKE="$TH/fake-host"
+mkdir -p "$FAKE"
+timeout 1 bash components/host/env-watcher.sh "$WSRC" "$FAKE/home/.bb/personal-workspaces" >/dev/null 2>&1
+[ -e "$FAKE/home" ] && bad "watcher wrote into non-sandbox path" || ok "watcher refuses non-sandbox target"
+
 echo "# self-restore after wipe (bashrc block is the restorer)"
 rm -rf "$TH/.bb-docker-route"
 bash -ic 'echo x' >/dev/null 2>&1
