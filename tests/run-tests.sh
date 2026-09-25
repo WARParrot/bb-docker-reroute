@@ -33,6 +33,12 @@ else
   ok "no new symlink created (NO_SYMLINK)"
 fi
 
+echo "# stale-file pruning on reinstall"
+touch "$TH/.bb-docker-route/hook.sh" "$TH/.bb-docker-route/probe-container-tool.sh"
+bash components/install.sh >/dev/null 2>&1
+[ ! -e "$TH/.bb-docker-route/hook.sh" ] && [ ! -e "$TH/.bb-docker-route/probe-container-tool.sh" ] \
+  && ok "obsolete files pruned on reinstall" || bad "stale files not pruned"
+
 echo "# interactive shell self-heal"
 M="$TH/.bb/personal-workspaces/env_testid"
 rm -rf "$M"

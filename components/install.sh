@@ -23,6 +23,8 @@ mkdir -p "${BC_DIR}/bin" "${HOME}/.bb/personal-workspaces"
 install -m 0755 "${TOP_DIR}/bin/bb-docker-route" "${BC_BIN}"
 cp "${TOP_DIR}/components/rc.sh" "${BC_DIR}/rc.sh"
 install -m 0755 "${TOP_DIR}/bootstrap.sh" "${BC_DIR}/bootstrap.sh"
+# prune files obsoleted by newer versions of this plugin
+rm -f "${BC_DIR}/hook.sh" "${BC_DIR}/probe-container-tool.sh"
 # remember where the checkout lives for offline restore
 printf '%s\n' "${TOP_DIR}" > "${BC_DIR}/.checkout-path"
 
