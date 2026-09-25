@@ -41,6 +41,7 @@ bb-docker-route status     # JSON probe
 
 | Path | Role |
 |------|------|
+| `package.json` | bb plugin manifest (required by the bb plugin installer) |
 | `bin/bb-docker-route` | CLI: `provision`, `status`, `doctor`, `install`, `remove` |
 | `components/install.sh` | Idempotent installer (marked `~/.bashrc` blocks, PATH symlink) |
 | `components/rc.sh` | Exports + self-healing `cd` + DEBUG-trap shim |

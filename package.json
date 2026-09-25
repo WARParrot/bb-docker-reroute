@@ -1,0 +1,13 @@
+{
+  "name": "bb-docker-reroute",
+  "version": "2.0.0",
+  "description": "Container-first routing for bb sessions in docker sandboxes: zero-touch self-healing shell bootstrap, env-dir provisioning, wipe-proof self-restore.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WARParrot/bb-docker-reroute.git"
+  },
+  "scripts": {
+    "test": "bash tests/run-tests.sh"
+  }
+}
