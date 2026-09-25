@@ -41,7 +41,10 @@ bb-docker-route status     # JSON probe
 
 | Path | Role |
 |------|------|
-| `package.json` | bb plugin manifest (required by the bb plugin installer) |
+| `package.json` | bb plugin manifest: `bb.server` entry, branding, skills |
+| `server.ts` | bb server lifecycle entry (`export default function plugin(bb)`) |
+| `skills/bb-docker-route/` | bb skill shipped with the plugin |
+| `assets/icon.svg` | plugin branding icon |
 | `bin/bb-docker-route` | CLI: `provision`, `status`, `doctor`, `install`, `remove` |
 | `components/install.sh` | Idempotent installer (marked `~/.bashrc` blocks, PATH symlink) |
 | `components/rc.sh` | Exports + self-healing `cd` + DEBUG-trap shim |
