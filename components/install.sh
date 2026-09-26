@@ -23,6 +23,11 @@ mkdir -p "${BC_DIR}/bin" "${HOME}/.bb/personal-workspaces"
 install -m 0755 "${TOP_DIR}/bin/bb-docker-route" "${BC_BIN}"
 cp "${TOP_DIR}/components/rc.sh" "${BC_DIR}/rc.sh"
 install -m 0755 "${TOP_DIR}/bootstrap.sh" "${BC_DIR}/bootstrap.sh"
+# host-side helpers (run on the HOST, mirrored here for checkout-free access)
+mkdir -p "${BC_DIR}/components/host"
+for h in "${TOP_DIR}"/components/host/*.sh; do
+  [ -e "$h" ] && install -m 0755 "$h" "${BC_DIR}/components/host/$(basename "$h")"
+done
 # prune files obsoleted by newer versions of this plugin
 rm -f "${BC_DIR}/hook.sh" "${BC_DIR}/probe-container-tool.sh"
 # remember where the checkout lives for offline restore
@@ -76,5 +81,6 @@ BDRBLOCK
 log "bashrc: refreshed rc source line"
 
 log "done. Shells self-heal missing env dirs; install self-restores if wiped."
+log "Attachments: run components/host/attachment-watcher.sh ON THE HOST (or: bb-docker-route attachments once)"
 log "Status: bb-docker-route status | Checks: bb-docker-route doctor"
 log "Remove anytime with: bb-docker-route remove"

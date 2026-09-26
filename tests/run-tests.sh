@@ -86,6 +86,23 @@ mkdir -p "$FAKE"
 timeout 1 bash components/host/env-watcher.sh "$WSRC" "$FAKE/home/.bb/personal-workspaces" >/dev/null 2>&1
 [ -e "$FAKE/home" ] && bad "watcher wrote into non-sandbox path" || ok "watcher refuses non-sandbox target"
 
+echo "# attachment watcher: full-tree mirror into fresh sandbox home"
+ASRC="$TH/hostbb/.bb/thread-storage"; AHOME="$TH/abhome"
+mkdir -p "$ASRC/thr1/Attachments" "$ASRC/thr2/notes" "$AHOME"
+printf 'payload' > "$ASRC/thr1/Attachments/task.7z"
+printf 'nested' > "$ASRC/thr2/notes/readme.md"
+timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AHOME/.bb/thread-storage" >/dev/null 2>&1
+check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z" 2>/dev/null)" payload "attachment mirrored (incl. nested dirs)"
+if [ ! -e "$AHOME/.bb/thread-storage/thr2/notes/readme.md" ]; then bad "second thread not mirrored"; else ok "all threads mirrored"; fi
+printf 'v2' > "$ASRC/thr1/Attachments/task.7z"
+timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AHOME/.bb/thread-storage" >/dev/null 2>&1
+check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z")" v2 "re-mirror picks up changed files"
+AF="$TH/afake"; mkdir -p "$AF"
+timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AF/home/.bb/thread-storage" >/dev/null 2>&1
+[ -e "$AF/home" ] && bad "attachment watcher wrote into non-sandbox path" || ok "attachment watcher refuses non-sandbox target"
+out="$(BB_DOCKER_ROUTE=1 bash "$TH/.bb-docker-route/bin/bb-docker-route" attachments once "$ASRC" "$AHOME/.bb/thread-storage" 2>/dev/null)"
+check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z")" v2 "CLI 'attachments once' mirrors"
+
 echo "# self-restore after wipe (bashrc block is the restorer)"
 rm -rf "$TH/.bb-docker-route"
 bash -ic 'echo x' >/dev/null 2>&1

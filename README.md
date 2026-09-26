@@ -63,3 +63,21 @@ mkdir -p /root/.hermes/sandboxes/docker/default/home/.bb/personal-workspaces/env
 ```bash
 bb-docker-route remove
 ```
+
+## Attachment mirroring (v2.2.0)
+
+bb stores thread attachments under `~/.bb/thread-storage/<thread>/Attachments`
+**host-side only** — sandboxed agents cannot read them. The new host-side
+component mirrors the whole tree into every sandbox home:
+
+```bash
+# on the HOST (once; long-running):
+~/.bb-docker-route/components/host/attachment-watcher.sh          # watch mode
+# or single pass (cron-friendly):
+~/.bb-docker-route/components/host/attachment-watcher.sh once
+```
+
+Inside the container the same helper is reachable via
+`bb-docker-route attachments [once] [src] [sandbox-glob]`.
+`bb-docker-route status` reports `attachment_watcher`; `doctor` shows install state.
+Additive and idempotent: never deletes sandbox files, re-copies only newer ones.
