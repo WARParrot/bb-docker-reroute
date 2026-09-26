@@ -126,7 +126,7 @@ function envSyncPass(home: string): { files: number; homes: number } {
     }
     for (const env of (() => {
       try {
-        return readdirSync(pw).filter((e) => e.startsWith("env_") && isDir(join(pw, e)));
+        return readdirSync(pw).filter((e: string) => e.startsWith("env_") && isDir(join(pw, e)));
       } catch {
         return [] as string[];
       }
@@ -135,6 +135,49 @@ function envSyncPass(home: string): { files: number; homes: number } {
         mkdirSync(join(src, env), { recursive: true });
         syncPair(join(src, env), join(pw, env));
         copied++;
+      }
+    }
+  }
+  return { files: copied, homes: homes.length };
+}
+
+/**
+ * One agent->host sync pass: for every sandbox home, copy files under any
+ * …/Attachments/ subtree (and ONLY under Attachments — thread metadata stays
+ * host-authoritative) into ~/.bb/thread-storage when missing or newer there.
+ * This is how files an agent creates inside its sandbox become downloadable
+ * bb attachments. Additive: never deletes.
+ */
+function agentAttachmentsPass(home: string): { files: number; homes: number } {
+  const hostStorage = join(home, ".bb", "thread-storage");
+  const homes = sandboxHomes(home);
+  if (homes.length === 0) return { files: 0, homes: 0 };
+
+  let copied = 0;
+  for (const homeDir of homes) {
+    const sandboxStorage = join(homeDir, ".bb", "thread-storage");
+    let threads: string[];
+    try {
+      threads = readdirSync(sandboxStorage);
+    } catch {
+      continue;
+    }
+    for (const thread of threads) {
+      const sandboxThread = join(sandboxStorage, thread);
+      if (!isDir(sandboxThread)) continue;
+      for (const entry of readdirSync(sandboxThread)) {
+        const attachmentsDir = join(sandboxThread, entry);
+        if (entry !== "Attachments" || !isDir(attachmentsDir)) continue;
+        const hostThread = join(hostStorage, thread);
+        if (!isDir(hostThread)) continue;   // only threads that exist host-side
+        for (const file of walkFiles(attachmentsDir)) {
+          const rel = relative(attachmentsDir, file);
+          const dst = join(hostThread, "Attachments", rel);
+          if (existsSync(dst) && statSync(dst).mtimeMs >= statSync(file).mtimeMs) continue;
+          mkdirSync(dirname(dst), { recursive: true });
+          copyFileSync(file, dst);
+          copied++;
+        }
       }
     }
   }
@@ -188,6 +231,33 @@ export default function plugin(bb: BbPluginApi) {
           () => {
             clearInterval(timer);
             bb.log.info("env sync service stopped");
+            resolve();
+          },
+          { once: true },
+        );
+      });
+    },
+  });
+
+  bb.background.service("agent-attachments-sync", {
+    start(signal) {
+      bb.log.info(`agent attachments sync started (poll ${POLL_MS / 1000}s)`);
+      const run = () => {
+        try {
+          const { files, homes } = agentAttachmentsPass(homedir());
+          if (files > 0) bb.log.info(`agent attachments: ${files} file(s) -> bb thread storage`);
+        } catch (err) {
+          bb.log.warn(`agent attachments pass failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      };
+      run();
+      const timer = setInterval(run, POLL_MS);
+      return new Promise<void>((resolve) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            clearInterval(timer);
+            bb.log.info("agent attachments sync stopped");
             resolve();
           },
           { once: true },

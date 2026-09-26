@@ -135,18 +135,30 @@ const dst = join(fh, '.hermes/sandboxes/docker/default/home/.bb/thread-storage/t
 mkdirSync(join(fh, '.bb/thread-storage/thrS/Attachments'), { recursive: true });
 mkdirSync(join(fh, '.hermes/sandboxes/docker/default/home'), { recursive: true });
 writeFileSync(src, 'v1');
+const services = [];
 const bb = { log: { info: () => {}, warn: (m) => console.log('WARN', m) },
-             background: { service: (n, s) => { globalThis.svc = s; } } };
+             background: { service: (n, s) => services.push(s) } };
 plugin(bb);
 const ac = new AbortController();
-const stopped = globalThis.svc.start(ac.signal);
+const stopped = Promise.all(services.map(s => s.start(ac.signal)));
 const poll = async (want, ms) => { const t0 = Date.now();
   while (Date.now() - t0 < ms) { try { if (readFileSync(dst, 'utf8') === want) return true; } catch {} await new Promise(r => setTimeout(r, 200)); } return false; };
+const poll2 = async (path, want, ms) => { const t0 = Date.now();
+  while (Date.now() - t0 < ms) { try { if (readFileSync(path, 'utf8') === want) return true; } catch {} await new Promise(r => setTimeout(r, 200)); } return false; };
 const stillRunning = await Promise.race([stopped.then(() => false), new Promise(r => setTimeout(() => r(true), 1200))]);
 console.log('RUNNING', stillRunning ? 'ok' : 'FAIL');        // start() must stay pending until abort
 console.log('PASS1', (await poll('v1', 3000)) ? 'ok' : 'FAIL');
 writeFileSync(src, 'v2');
 console.log('POLL', (await poll('v2', 9000)) ? 'ok' : 'FAIL');
+// agent->host: a file the agent creates in the sandbox Attachments subtree
+// must reach host thread-storage (and ONLY Attachments subtrees sync back)
+const agentDir = join(fh, '.hermes/sandboxes/docker/default/home/.bb/thread-storage/thrS/Attachments');
+const agentFile = join(agentDir, 'agent-made.txt');
+writeFileSync(agentFile, 'agent-artifact');
+const hostGot = await poll2(join(fh, '.bb/thread-storage/thrS/Attachments/agent-made.txt'), 'agent-artifact', 9000);
+console.log('AGENTUP', hostGot ? 'ok' : 'FAIL');
+const hostMeta = join(fh, '.bb/thread-storage/thrS/meta.json');
+try { readFileSync(hostMeta, 'utf8'); console.log('METASAFE', 'FAIL'); } catch { console.log('METASAFE', 'ok'); }
 ac.abort(); await stopped;
 console.log('STOPPED', 'ok');
 writeFileSync(src, 'v3'); await new Promise(r => setTimeout(r, 6500));
@@ -159,6 +171,8 @@ EOFMJS
   case "$out" in *"POLL ok"*) ok "service poll picks up new attachment (~5s)" ;; *) bad "poll cadence ($out)" ;; esac
   case "$out" in *"STOPPED ok"*) ok "service stops cleanly on abort" ;; *) bad "clean stop ($out)" ;; esac
   case "$out" in *"AFTER ok"*) ok "no mirror passes after stop" ;; *) bad "post-stop pass ($out)" ;; esac
+  case "$out" in *"AGENTUP ok"*) ok "agent Attachments file reaches host (downloadable)" ;; *) bad "agent->host attachments ($out)" ;; esac
+  case "$out" in *"METASAFE ok"*) ok "non-Attachments thread files never sync back" ;; *) bad "metadata safety ($out)" ;; esac
   rm -rf "$SVCT"
   fi
 else
