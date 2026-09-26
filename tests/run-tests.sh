@@ -120,7 +120,9 @@ check "$(cat "$AHOME/.bb/thread-storage/thr3/Attachments/prove.txt" 2>/dev/null)
 echo "# background service (server.ts, embedded): running-semantics, mirror, clean stop"
 node --version >/dev/null 2>&1 || { bad "node present"; }
 if command -v node >/dev/null 2>&1 && command -v tsc >/dev/null 2>&1; then
-  SVCT="$(mktemp -d /root/bdr-svc-XXXXXX)"
+  SVCT="$(mktemp -d /root/bdr-svc-XXXXXX 2>/dev/null || mktemp -d)"
+  [ -n "$SVCT" ] && [ -d "$SVCT" ] || { bad "svc tempdir"; SVCT=""; }
+  if [ -n "$SVCT" ]; then
   tsc server.ts --outDir "$SVCT" --module esnext --target es2022 --moduleResolution bundler --skipLibCheck >/dev/null 2>&1
   cat > "$SVCT/harness.mjs" <<'EOFMJS'
 import plugin from './server.js';
@@ -158,6 +160,7 @@ EOFMJS
   case "$out" in *"STOPPED ok"*) ok "service stops cleanly on abort" ;; *) bad "clean stop ($out)" ;; esac
   case "$out" in *"AFTER ok"*) ok "no mirror passes after stop" ;; *) bad "post-stop pass ($out)" ;; esac
   rm -rf "$SVCT"
+  fi
 else
   bad "node/tsc present for service test"
 fi
