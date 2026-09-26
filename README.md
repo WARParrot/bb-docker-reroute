@@ -67,7 +67,10 @@ bb-docker-route remove
 ## Attachment mirroring (v2.3.0, zero-touch)
 
 A `bb.background.service` ("attachment-mirror") lives inside the bb server on
-the HOST and re-runs the mirror every 5s. Attach a file to a thread -> it
+the HOST and re-runs the mirror every 5s. v2.3.2 embeds the mirror algorithm
+(pure node:fs) directly in server.ts — no external script lookup, so the
+service always starts (previous versions could show status Stopped when the
+install layout differed). Attach a file to a thread -> it
 appears in every sandbox home within seconds, while bb runs, with no user
 action. Algorithm stays in attachment-watcher.sh (hermetically tested, incl.
 the service harness: start-pass, cadence, clean stop, no post-stop passes).

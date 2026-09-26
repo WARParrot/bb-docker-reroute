@@ -111,13 +111,11 @@ printf 'cli-proof' > "$ASRC/thr3/Attachments/prove.txt"   # must appear ONLY if 
 out="$(BB_DOCKER_ROUTE=1 bash "$TH/.bb-docker-route/bin/bb-docker-route" attachments once "$ASRC" "$AHOME/.bb/thread-storage" 2>/dev/null)"
 check "$(cat "$AHOME/.bb/thread-storage/thr3/Attachments/prove.txt" 2>/dev/null)" cli-proof "CLI 'attachments once' mirrors" 
 
-echo "# background service (server.ts): auto-start, poll cadence, clean stop"
+echo "# background service (server.ts, embedded): running-semantics, mirror, clean stop"
 node --version >/dev/null 2>&1 || { bad "node present"; }
 if command -v node >/dev/null 2>&1 && command -v tsc >/dev/null 2>&1; then
   SVCT="$(mktemp -d /root/bdr-svc-XXXXXX)"
   tsc server.ts --outDir "$SVCT" --module esnext --target es2022 --moduleResolution bundler --skipLibCheck >/dev/null 2>&1
-  mkdir -p "$SVCT/components/host"
-  cp components/host/attachment-watcher.sh "$SVCT/components/host/"
   cat > "$SVCT/harness.mjs" <<'EOFMJS'
 import plugin from './server.js';
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
@@ -125,9 +123,9 @@ import { join } from 'node:path';
 const fh = process.argv[2];
 process.env.HOME = fh;
 const src = join(fh, '.bb/thread-storage/thrS/Attachments/a.txt');
-const dst = join(fh, '.hermes/sandboxes/one/home/.bb/thread-storage/thrS/Attachments/a.txt');
+const dst = join(fh, '.hermes/sandboxes/docker/default/home/.bb/thread-storage/thrS/Attachments/a.txt');
 mkdirSync(join(fh, '.bb/thread-storage/thrS/Attachments'), { recursive: true });
-mkdirSync(join(fh, '.hermes/sandboxes/one/home'), { recursive: true });
+mkdirSync(join(fh, '.hermes/sandboxes/docker/default/home'), { recursive: true });
 writeFileSync(src, 'v1');
 const bb = { log: { info: () => {}, warn: (m) => console.log('WARN', m) },
              background: { service: (n, s) => { globalThis.svc = s; } } };
@@ -136,17 +134,20 @@ const ac = new AbortController();
 const stopped = globalThis.svc.start(ac.signal);
 const poll = async (want, ms) => { const t0 = Date.now();
   while (Date.now() - t0 < ms) { try { if (readFileSync(dst, 'utf8') === want) return true; } catch {} await new Promise(r => setTimeout(r, 200)); } return false; };
-console.log('PASS1', (await poll('v1', 3000)) ? 'ok' : 'FAIL');           // first pass on start
+const stillRunning = await Promise.race([stopped.then(() => false), new Promise(r => setTimeout(() => r(true), 1200))]);
+console.log('RUNNING', stillRunning ? 'ok' : 'FAIL');        // start() must stay pending until abort
+console.log('PASS1', (await poll('v1', 3000)) ? 'ok' : 'FAIL');
 writeFileSync(src, 'v2');
-console.log('POLL', (await poll('v2', 9000)) ? 'ok' : 'FAIL');            // ~5s cadence picks the change
+console.log('POLL', (await poll('v2', 9000)) ? 'ok' : 'FAIL');
 ac.abort(); await stopped;
 console.log('STOPPED', 'ok');
-writeFileSync(src, 'v3'); await new Promise(r => setTimeout(r, 6500));    // no passes after stop
+writeFileSync(src, 'v3'); await new Promise(r => setTimeout(r, 6500));
 let after = 'v2'; try { after = readFileSync(dst, 'utf8'); } catch {}
 console.log('AFTER', after === 'v2' ? 'ok' : 'FAIL ' + after);
 EOFMJS
   out="$(cd "$SVCT" && node harness.mjs "$SVCT/home" 2>&1)"
-  case "$out" in *"PASS1 ok"*) ok "service pass 1 mirrors on start" ;; *) bad "pass 1 ($out)" ;; esac
+  case "$out" in *"RUNNING ok"*) ok "service stays Running (start pending until abort)" ;; *) bad "running semantics ($out)" ;; esac
+  case "$out" in *"PASS1 ok"*) ok "service mirrors on start" ;; *) bad "start pass ($out)" ;; esac
   case "$out" in *"POLL ok"*) ok "service poll picks up new attachment (~5s)" ;; *) bad "poll cadence ($out)" ;; esac
   case "$out" in *"STOPPED ok"*) ok "service stops cleanly on abort" ;; *) bad "clean stop ($out)" ;; esac
   case "$out" in *"AFTER ok"*) ok "no mirror passes after stop" ;; *) bad "post-stop pass ($out)" ;; esac
