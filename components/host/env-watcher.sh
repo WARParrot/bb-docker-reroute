@@ -11,7 +11,8 @@
 # Idempotent: skips dirs that already exist. No cron needed.
 set -u
 SRC="${1:-$HOME/.bb/personal-workspaces}"
-SANDBOX_GLOB="${2:-/root/.hermes/sandboxes/*/home/.bb/personal-workspaces}"
+SANDBOX_GLOB="${2:-}"
+SANDBOX_GLOB2="${3:-}"   # optional 2nd nesting depth (sandboxes/<b>/<n>/home)
 
 mkdir -p "$SRC"
 log() { printf '[bb-docker-route host] %s\n' "$*" >&2; }
@@ -21,7 +22,8 @@ mirror_once() {
   for d in "$SRC"/env_*; do
     [ -d "$d" ] || continue
     base="$(basename "$d")"
-    for tgt in $SANDBOX_GLOB; do
+    # layouts: sandboxes/<name>/home/... or sandboxes/<backend>/<name>/home/...
+    for tgt in $SANDBOX_GLOB $SANDBOX_GLOB2; do
       # guard on the sandbox HOME level (…/home/.bb/personal-workspaces → …/home):
       # a fresh home may not have .bb yet — create the full path on demand.
       home_dir="$(dirname "$(dirname "$tgt")")"
@@ -31,6 +33,11 @@ mirror_once() {
   done
 }
 
+if [ -z "$SANDBOX_GLOB" ]; then
+  # default: match both known nesting depths at the sandbox-home level
+  SANDBOX_GLOB="${HOME}/.hermes/sandboxes/*/home/.bb/personal-workspaces"
+  SANDBOX_GLOB2="${HOME}/.hermes/sandboxes/*/*/home/.bb/personal-workspaces"
+fi
 mirror_once
 log "initial mirror done; watching ${SRC}"
 if command -v inotifywait >/dev/null 2>&1; then

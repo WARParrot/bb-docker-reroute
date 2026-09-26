@@ -74,6 +74,12 @@ the service harness: start-pass, cadence, clean stop, no post-stop passes).
 Manual paths still work: `bb-docker-route attachments once`, or the
 long-running watcher below.
 
+Sandbox layouts vary (sandboxes/<name>/home vs sandboxes/<backend>/<name>/home,
+e.g. docker/default); the default glob matches both. After updating the plugin
+NO bb restart is needed:
+
+    bb plugin reload bb-docker-route
+
 ## Manual mirroring (v2.2.0, fallback)
 
 bb stores thread attachments under `~/.bb/thread-storage/<thread>/Attachments`

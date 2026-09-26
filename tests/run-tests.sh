@@ -97,6 +97,12 @@ if [ ! -e "$AHOME/.bb/thread-storage/thr2/notes/readme.md" ]; then bad "second t
 printf 'v2' > "$ASRC/thr1/Attachments/task.7z"
 timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AHOME/.bb/thread-storage" >/dev/null 2>&1
 check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z")" v2 "re-mirror picks up changed files"
+# nesting depths: sandboxes/<n>/home AND sandboxes/<b>/<n>/home (fresh homes, no .bb)
+# default glob scans $HOME/.hermes, so the probe homes live directly under it
+mkdir -p "$TH/.hermes/sandboxes/docker/default/home" "$TH/.hermes/sandboxes/flat/home"
+timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "" >/dev/null 2>&1
+check "$(cat "$TH/.hermes/sandboxes/docker/default/home/.bb/thread-storage/thr1/Attachments/task.7z" 2>/dev/null)" v2 "2-level nesting home mirrored (default glob)"
+check "$(cat "$TH/.hermes/sandboxes/flat/home/.bb/thread-storage/thr1/Attachments/task.7z" 2>/dev/null)" v2 "1-level nesting home mirrored (default glob)"
 AF="$TH/afake"; mkdir -p "$AF"
 timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AF/home/.bb/thread-storage" >/dev/null 2>&1
 [ -e "$AF/home" ] && bad "attachment watcher wrote into non-sandbox path" || ok "attachment watcher refuses non-sandbox target"

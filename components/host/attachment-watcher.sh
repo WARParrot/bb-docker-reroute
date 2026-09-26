@@ -63,7 +63,9 @@ mirror_once() {
     # Anchor at the sandbox home level: it exists as soon as the sandbox
     # does, so first-run mirroring has a real target (no chicken-and-egg);
     # .bb/thread-storage is created on demand inside it.
-    for home_dir in "${HOME}"/.hermes/sandboxes/*/home; do
+    # Layouts differ: sandboxes/<name>/home (1 level) or
+    # sandboxes/<backend>/<name>/home (2 levels, e.g. docker/default).
+    for home_dir in "${HOME}"/.hermes/sandboxes/*/home "${HOME}"/.hermes/sandboxes/*/*/home; do
       [ -d "$home_dir" ] || continue
       sync_tree "$SRC" "$home_dir/.bb/thread-storage"
       n=$((n+1))
