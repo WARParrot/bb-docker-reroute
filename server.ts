@@ -88,6 +88,60 @@ function sandboxHomes(home: string): string[] {
 }
 
 /**
+ * One bidirectional env-dir sync pass between the HOST env dirs
+ * (~/.bb/personal-workspaces/env_<id>) and every sandbox home's shadow copy
+ * (.bb/personal-workspaces/env_<id>). Files missing or older on the target
+ * side are copied over; shadow-only env dirs (agent cd-shim births) are
+ * backfilled to the host so bb reads agent-written files. Additive by
+ * design: never deletes.
+ */
+function envSyncPass(home: string): { files: number; homes: number } {
+  const src = join(home, ".bb", "personal-workspaces");
+  const homes = sandboxHomes(home);
+  if (!isDir(src) || homes.length === 0) return { files: 0, homes: 0 };
+
+  let copied = 0;
+  const syncPair = (a: string, b: string) => {
+    for (const [from, to] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      if (!isDir(from)) continue;
+      for (const file of walkFiles(from)) {
+        const rel = relative(from, file);
+        const dst = join(to, rel);
+        if (existsSync(dst) && statSync(dst).mtimeMs >= statSync(file).mtimeMs) continue;
+        mkdirSync(dirname(dst), { recursive: true });
+        copyFileSync(file, dst);
+        copied++;
+      }
+    }
+  };
+  for (const homeDir of homes) {
+    const pw = join(homeDir, ".bb", "personal-workspaces");
+    for (const env of readdirSync(src)) {
+      const hostEnv = join(src, env);
+      if (!isDir(hostEnv) || !env.startsWith("env_")) continue;
+      syncPair(hostEnv, join(pw, env));
+    }
+    for (const env of (() => {
+      try {
+        return readdirSync(pw).filter((e) => e.startsWith("env_") && isDir(join(pw, e)));
+      } catch {
+        return [] as string[];
+      }
+    })()) {
+      if (!isDir(join(src, env))) {
+        mkdirSync(join(src, env), { recursive: true });
+        syncPair(join(src, env), join(pw, env));
+        copied++;
+      }
+    }
+  }
+  return { files: copied, homes: homes.length };
+}
+
+/**
  * One mirror pass: copy files from ~/.bb/thread-storage into every sandbox
  * home's .bb/thread-storage when missing or older than the source.
  * Additive by design: never deletes, never overwrites newer target files.
@@ -114,6 +168,33 @@ function mirrorPass(home: string): { files: number; homes: number } {
 
 export default function plugin(bb: BbPluginApi) {
   bb.log.info("bb-docker-route registered: container-first session routing");
+
+  bb.background.service("env-sync", {
+    start(signal) {
+      bb.log.info(`env sync service started (poll ${POLL_MS / 1000}s, embedded)`);
+      const run = () => {
+        try {
+          const { files, homes } = envSyncPass(homedir());
+          if (files > 0) bb.log.info(`env sync: ${files} file(s) <-> ${homes} sandbox home(s)`);
+        } catch (err) {
+          bb.log.warn(`env sync pass failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      };
+      run();
+      const timer = setInterval(run, POLL_MS);
+      return new Promise<void>((resolve) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            clearInterval(timer);
+            bb.log.info("env sync service stopped");
+            resolve();
+          },
+          { once: true },
+        );
+      });
+    },
+  });
 
   bb.background.service("attachment-mirror", {
     start(signal) {

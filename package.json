@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-docker-route",
-  "version": "2.3.2",
+  "version": "2.4.0",
   "type": "module",
   "description": "Container-first routing for bb sessions in docker sandboxes: zero-touch self-healing shell bootstrap, env-dir provisioning, wipe-proof self-restore.",
   "license": "MIT",

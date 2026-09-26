@@ -52,10 +52,21 @@ bb-docker-route status     # JSON probe
 | `bootstrap.sh` | Restore chain: local checkout → git clone (public repo) |
 | `tests/run-tests.sh` | Hermetic battery (throwaway HOME, no system writes) |
 
-## Host-side permanent fix (optional, complements the plugin)
+## File visibility (v2.4.0): bb <-> container
+
+Files an agent writes inside a container land in the sandbox home (shadow
+copy), which bb does not read — and vice versa. Since v2.4.0 the plugin ships
+a second embedded bb-server service (`env-sync`) that bidirectionally syncs
+`~/.bb/personal-workspaces/env_<id>` with every sandbox home (newer mtime
+wins, never deletes, agent-born dirs backfilled to the host). Zero manual
+steps: reload the plugin (`bb plugin reload bb-docker-route`) and both
+directions work while bb runs.
+
+`components/host/env-watcher.sh` remains for hosts without the plugin
+installed: pure bash + cp, both nesting depths, home-level globs.
 
 ```bash
-mkdir -p /root/.hermes/sandboxes/docker/default/home/.bb/personal-workspaces/env_<id>
+nohup bash components/host/env-watcher.sh >/var/log/bdr-env-watcher.log 2>&1 &
 ```
 
 ## Removal

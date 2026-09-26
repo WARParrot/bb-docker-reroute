@@ -76,15 +76,21 @@ echo "# doctor"
 doc="$(bash "$TH/.bb-docker-route/bin/bb-docker-route" doctor 2>/dev/null)"
 case "$doc" in *"present"*) ok "doctor reports components" ;; *) bad "doctor" ;; esac
 
-echo "# host env-watcher: fresh sandbox home (no .bb yet)"
-WSRC="$TH/hostbb/.bb/personal-workspaces"; WHOME="$TH/sbhome"
-mkdir -p "$WSRC/env_fresh" "$WHOME"   # Hermes provisions the home; watcher adds .bb tree
-timeout 1 bash components/host/env-watcher.sh "$WSRC" "$WHOME/.bb/personal-workspaces" >/dev/null 2>&1
-[ -d "$WHOME/.bb/personal-workspaces/env_fresh" ] && ok "watcher creates into fresh home" || bad "watcher fresh-home mirror"
-FAKE="$TH/fake-host"
-mkdir -p "$FAKE"
-timeout 1 bash components/host/env-watcher.sh "$WSRC" "$FAKE/home/.bb/personal-workspaces" >/dev/null 2>&1
-[ -e "$FAKE/home" ] && bad "watcher wrote into non-sandbox path" || ok "watcher refuses non-sandbox target"
+echo "# host env-watcher: bidirectional sync over sandbox homes"
+WSRC="$TH/hostbb"; WHOME="$TH/sandboxes/t1/home"
+mkdir -p "$WSRC/env_fresh" "$WHOME"; echo from-bb > "$WSRC/env_fresh/bb.txt"
+# Hermes provisions the home; watcher must build the whole .bb tree inside
+timeout 1 bash components/host/env-watcher.sh "$WSRC" "$TH/sandboxes/*/home" >/dev/null 2>&1
+[ -f "$WHOME/.bb/personal-workspaces/env_fresh/bb.txt" ] && ok "fresh-home mirror (no .bb yet)" || bad "fresh-home mirror"
+# agent writes inside the sandbox -> must reach the host (bb reads it)
+sleep 1.1; echo agent-file > "$WHOME/.bb/personal-workspaces/env_fresh/agent.txt"
+sleep 1.1
+timeout 1 bash components/host/env-watcher.sh "$WSRC" "$TH/sandboxes/*/home" >/dev/null 2>&1
+[ -f "$WSRC/env_fresh/agent.txt" ] && ok "agent file synced back to host" || bad "agent->host sync"
+# non-sandbox target: must be refused
+FAKE="$TH/fake-host"; mkdir -p "$FAKE/home"
+timeout 1 bash components/host/env-watcher.sh "$WSRC" "$FAKE/sandboxes/*/home" >/dev/null 2>&1
+[ -e "$FAKE/home/.bb" ] && bad "watcher wrote into non-sandbox path" || ok "watcher refuses non-sandbox home"
 
 echo "# attachment watcher: full-tree mirror into fresh sandbox home"
 ASRC="$TH/hostbb/.bb/thread-storage"; AHOME="$TH/abhome"

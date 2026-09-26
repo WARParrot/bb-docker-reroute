@@ -24,6 +24,17 @@ After that: every new shell auto-provisions missing env dirs, a self-healing
 `cd` creates-and-enters missing env dirs (bash and children), and a wiped
 install restores itself on the next shell start (local checkout → git).
 
+## File visibility bb <-> container (v2.4.0, zero-touch)
+
+The embedded bb-server service `env-sync` bidirectionally syncs env dirs
+between host and sandbox homes every ~5s (mtime wins, never deletes,
+agent-born dirs backfilled). After `bb plugin reload bb-docker-route` no
+manual step is needed. On hosts without the plugin:
+
+```bash
+nohup bash <repo>/components/host/env-watcher.sh >/var/log/bdr-env-watcher.log 2>&1 &
+```
+
 ## Host side (once, covers non-bash tools)
 
 The tool-shells and non-bash processes never read `~/.bashrc`. On the host:
