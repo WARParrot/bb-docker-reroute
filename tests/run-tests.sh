@@ -100,8 +100,10 @@ check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z")" v2 "re-mirro
 AF="$TH/afake"; mkdir -p "$AF"
 timeout 1 bash components/host/attachment-watcher.sh once "$ASRC" "$AF/home/.bb/thread-storage" >/dev/null 2>&1
 [ -e "$AF/home" ] && bad "attachment watcher wrote into non-sandbox path" || ok "attachment watcher refuses non-sandbox target"
+mkdir -p "$ASRC/thr3/Attachments"
+printf 'cli-proof' > "$ASRC/thr3/Attachments/prove.txt"   # must appear ONLY if the CLI really mirrors
 out="$(BB_DOCKER_ROUTE=1 bash "$TH/.bb-docker-route/bin/bb-docker-route" attachments once "$ASRC" "$AHOME/.bb/thread-storage" 2>/dev/null)"
-check "$(cat "$AHOME/.bb/thread-storage/thr1/Attachments/task.7z")" v2 "CLI 'attachments once' mirrors"
+check "$(cat "$AHOME/.bb/thread-storage/thr3/Attachments/prove.txt" 2>/dev/null)" cli-proof "CLI 'attachments once' mirrors" 
 
 echo "# self-restore after wipe (bashrc block is the restorer)"
 rm -rf "$TH/.bb-docker-route"

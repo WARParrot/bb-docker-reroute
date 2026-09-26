@@ -44,7 +44,7 @@ cmd_status() {
   local exists="null"
   [ -n "$id" ] && { [ -d "${DIR}/env_${id}" ] && exists=true || exists=false; }
   local watcher="false"
-  [ -x "${STATE}/components/attachment-watcher.sh" ] && watcher=true
+  [ -x "${STATE}/components/host/attachment-watcher.sh" ] && watcher=true
   printf '{"in_docker":%s,"env_id":"%s","env_dir_exists":%s,"route_active":%s,"bb_on_path":%s,"attachment_watcher":%s}\n' \
     "$in_docker" "$id" "$exists" \
     "$([ -n "${BB_DOCKER_ROUTE:-}" ] && echo true || echo false)" \
@@ -69,8 +69,8 @@ cmd_install() { exec bash "$(dirname "$(readlink -f "$0")")/../components/instal
 cmd_attachments() {
   local mode="${1:-}"
   case "$mode" in once) shift ;; esac
-  if [ -x "${STATE}/components/attachment-watcher.sh" ]; then
-    exec bash "${STATE}/components/attachment-watcher.sh" ${mode:+"$mode"} "$@"
+  if [ -x "${STATE}/components/host/attachment-watcher.sh" ]; then
+    exec bash "${STATE}/components/host/attachment-watcher.sh" ${mode:+"$mode"} "$@"
   fi
   # fallback: run straight from the checkout recorded at install time
   local src; src="$(cat "${STATE}/.checkout-path" 2>/dev/null || true)"
