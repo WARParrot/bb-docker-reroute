@@ -64,7 +64,17 @@ mkdir -p /root/.hermes/sandboxes/docker/default/home/.bb/personal-workspaces/env
 bb-docker-route remove
 ```
 
-## Attachment mirroring (v2.2.0)
+## Attachment mirroring (v2.3.0, zero-touch)
+
+A `bb.background.service` ("attachment-mirror") lives inside the bb server on
+the HOST and re-runs the mirror every 5s. Attach a file to a thread -> it
+appears in every sandbox home within seconds, while bb runs, with no user
+action. Algorithm stays in attachment-watcher.sh (hermetically tested, incl.
+the service harness: start-pass, cadence, clean stop, no post-stop passes).
+Manual paths still work: `bb-docker-route attachments once`, or the
+long-running watcher below.
+
+## Manual mirroring (v2.2.0, fallback)
 
 bb stores thread attachments under `~/.bb/thread-storage/<thread>/Attachments`
 **host-side only** — sandboxed agents cannot read them. The new host-side

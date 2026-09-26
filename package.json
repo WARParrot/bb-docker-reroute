@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-docker-route",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "description": "Container-first routing for bb sessions in docker sandboxes: zero-touch self-healing shell bootstrap, env-dir provisioning, wipe-proof self-restore.",
   "license": "MIT",
@@ -14,7 +14,7 @@
   },
   "bb": {
     "name": "bb Docker Route",
-    "description": "Routes bb sessions in docker sandbox containers: self-healing shell bootstrap, env-dir provisioning, wipe-proof self-restore, host env-watcher for non-bash tools. Host attachment-watcher mirrors bb thread attachments into sandbox homes.",
+    "description": "Routes bb sessions in docker sandbox containers: self-healing shell bootstrap, env-dir provisioning, wipe-proof self-restore. Zero-touch attachment mirroring into sandbox homes (bb background service + host watcher + CLI).",
     "branding": {
       "icon": "./assets/icon.svg"
     },

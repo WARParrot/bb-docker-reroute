@@ -15,11 +15,15 @@
 # Zero external deps; uses rsync when present, falls back to cp -p.
 # Idempotent: existing identical files are not rewritten; additive (never deletes).
 set -u
+shopt -s nullglob   # unmatched glob -> empty loop, never a literal '*' path
 
 MODE="watch"
 if [ "${1:-}" = "once" ]; then MODE="once"; shift; fi
 SRC="${1:-${HOME}/.bb/thread-storage}"
-SANDBOX_GLOB="${2:-/root/.hermes/sandboxes/*/home/.bb/thread-storage}"
+# Optional explicit target glob (thread-storage level, as in the tests).
+# Default: every sandbox home's .bb dir -- it exists before thread-storage
+# does, so first-run mirroring has a real anchor (no chicken-and-egg).
+SANDBOX_GLOB="${2:-}"
 
 log() { printf '[bb-docker-route host] %s\n' "$*" >&2; }
 
@@ -45,20 +49,31 @@ mirror_once() {
     log "no thread storage at $SRC (nothing attached yet)"
     return 1
   fi
-  local tgt home_dir n=0
-  for tgt in $SANDBOX_GLOB; do
-    # guard on the sandbox HOME level (…/home/.bb/thread-storage → …/home):
-    # a fresh home may lack .bb — create the full path on demand.
-    home_dir="$(dirname "$(dirname "$tgt")")"
-    [ -d "$home_dir" ] || continue
-    sync_tree "$SRC" "$tgt"
-    n=$((n+1))
-  done
+  local tgt home_dir n=0 bbdir
+  if [ -n "$SANDBOX_GLOB" ]; then
+    for tgt in $SANDBOX_GLOB; do
+      # guard on the sandbox HOME level (.../home/.bb/thread-storage -> .../home):
+      # a fresh home may lack .bb -- create the full path on demand.
+      home_dir="$(dirname "$(dirname "$tgt")")"
+      [ -d "$home_dir" ] || continue
+      sync_tree "$SRC" "$tgt"
+      n=$((n+1))
+    done
+  else
+    # Anchor at the sandbox home level: it exists as soon as the sandbox
+    # does, so first-run mirroring has a real target (no chicken-and-egg);
+    # .bb/thread-storage is created on demand inside it.
+    for home_dir in "${HOME}"/.hermes/sandboxes/*/home; do
+      [ -d "$home_dir" ] || continue
+      sync_tree "$SRC" "$home_dir/.bb/thread-storage"
+      n=$((n+1))
+    done
+  fi
   if [ "$n" -gt 0 ]; then
     log "mirrored attachments from $SRC into $n sandbox home(s)"
     return 0
   fi
-  log "no active sandbox homes matched $SANDBOX_GLOB"
+  log "no sandbox homes matched yet (waiting)"
   return 1
 }
 
